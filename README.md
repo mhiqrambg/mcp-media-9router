@@ -1,212 +1,151 @@
 # mcp-media-9router
 
-MCP (Model Context Protocol) server untuk memberi AI agent akses web intelligence terstruktur melalui API 9router. Server ini dapat digunakan oleh OpenCode, Claude Desktop, Cursor, dan client MCP lain yang mendukung transport `stdio`.
+`mcp-media-9router` is a local MCP (Model Context Protocol) server for AI agents that need web intelligence. It connects OpenCode and other stdio-compatible MCP clients to the 9router API for web search and web-page extraction.
 
-`mcp-media-9router` bertindak sebagai adapter: AI agent memanggil tool MCP, lalu server meneruskan request ke 9router. Kredensial provider seperti Exa, Firecrawl, Jina Reader, Tavily, Brave, GPSE, dan OpenAI tetap dikelola di 9router.
-
-## Fitur
-
-- **`web_search`**: mencari informasi web dengan hasil terstruktur untuk AI agent.
-- **`web_fetch`**: mengambil URL publik dan mengembalikan konten Markdown yang disediakan 9router.
-- **Multi-provider search**: dukungan konfigurasi Exa, GPSE, Brave, OpenAI, dan provider lain yang tersedia di 9router.
-- **Multi-provider fetch**: dukungan konfigurasi Exa, Firecrawl, Jina Reader, Tavily, dan provider lain yang tersedia di 9router.
-- **Provider default**: pengguna menentukan provider default search dan fetch secara terpisah.
-- **Provider allowlist**: agent hanya dapat menggunakan provider yang diizinkan pengguna.
-- **Fallback `auto`**: provider fallback hanya dipakai saat timeout, rate limit, atau upstream tidak tersedia.
-- **Output aman untuk LLM**: hasil fetch dapat dibatasi oleh `MCP_MEDIA_MAX_OUTPUT_CHARS` agar context agent tidak penuh.
-- **Keamanan dasar**: menolak URL dengan scheme non-HTTP(S), credentials URL, localhost, private IPv4, dan private IPv6 sebelum request diteruskan.
-- **Error terstruktur**: error proxy dinormalisasi menjadi kode seperti `UPSTREAM_TIMEOUT`, `UPSTREAM_RATE_LIMITED`, dan `CONTENT_NOT_FOUND`.
-- **Tidak menyimpan data**: server tidak menyimpan API key, query, atau konten hasil fetch.
-
-## Arsitektur
+It runs locally on the user's machine, while search and fetch requests are sent to 9router over HTTPS or to a local 9router instance at `http://localhost` on any port. Provider credentials stay behind 9router; the user's 9router API key is stored in macOS Keychain after setup.
 
 ```text
-OpenCode / Claude Desktop / Cursor
-                |
-                | MCP over stdio
-                v
-      mcp-media-9router
-                |
-                | HTTPS + Bearer API key
-                v
-            9router API
-                |
-                v
-Exa / Firecrawl / Jina Reader / Tavily / Brave / GPSE / OpenAI
+OpenCode or another MCP client
+              |
+              | MCP over stdio
+              v
+     mcp-media-9router
+              |
+              | HTTPS or local HTTP
+              v
+          9router API
+              |
+              v
+Exa, Firecrawl, Jina Reader, Tavily, Brave, GPSE, OpenAI
 ```
 
-## Persyaratan
+## What It Is For
 
-- Node.js 22 atau lebih baru.
-- Akses ke endpoint 9router yang kompatibel.
-- API key 9router yang aktif.
+Use this server when an AI agent needs to:
 
-Periksa versi Node.js:
+- Search the web and receive structured results rather than an unstructured page.
+- Fetch a public URL and receive clean Markdown suitable for an LLM context.
+- Choose a specific 9router provider, such as Exa or Firecrawl.
+- Use a configured fallback chain when a provider is temporarily unavailable.
+- Keep provider selection, API access, and limits in one local configuration.
+
+## Installation
+
+### Requirements
+
+- macOS with Keychain access.
+- Node.js 22 or later.
+- Git and npm.
+- An active 9router API key.
+
+Use an HTTPS base URL for hosted 9router, for example `https://9router.mibp.me`. Local development also supports `http://localhost` with any port, such as `http://localhost:20128` or `http://localhost:8080`. Other HTTP hosts are rejected.
+
+Check your Node.js version:
 
 ```bash
 node --version
 ```
 
-## Instalasi Lokal Sebelum Publish
+### Install From GitHub
 
-Gunakan metode ini untuk menguji project dari source code di Mac Anda. Tidak perlu publish ke npm.
-
-```bash
-git clone https://github.com/YOUR_GITHUB_ORG/mcp-media-9router.git
-cd mcp-media-9router
-npm install
-npm run build
-```
-
-## Instalasi dari GitHub
-
-Installer satu-baris memasang source ke `~/.mcp-media-9router`, memasang dependency, membangun project, dan membuat command `mm9` di `~/.local/bin`. Installer membutuhkan Git, Node.js 22+, dan npm.
+The installer clones the project into `~/.mcp-media-9router`, installs dependencies, builds it, and creates the `mm9` command in `~/.local/bin`.
 
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/mhiqrambg/mcp-media-9router/main/install.sh)"
 ```
 
-Setelah selesai, buka terminal baru. Jika installer meminta reload shell, jalankan command yang ditampilkan, misalnya:
+Open a new terminal after installation. If the installer asks you to reload your shell, run the command it prints, for example:
 
 ```bash
 source ~/.zshrc
 ```
 
-Kemudian gunakan command langsung, tanpa `node dist/cli.js`:
+Configure 9router and register the MCP server in OpenCode:
 
 ```bash
 mm9 setup --opencode
-mm9 check
-mm9 list
-mm9 update
 ```
 
-Installer aman dijalankan ulang. Ia memperbarui source hanya saat working tree instalasi bersih; local change tidak akan ditimpa. Saat repository GitHub belum tersedia, gunakan [Instalasi Lokal Sebelum Publish](#instalasi-lokal-sebelum-publish).
+Press Enter to accept the defaults. The setup wizard asks for:
 
-Jika source sudah berada di komputer Anda, cukup jalankan dari folder project:
+- The 9router base URL.
+- Your 9router API key.
+- Default, allowed, and fallback providers for fetch.
+- Default, allowed, and fallback providers for search.
+
+Choose the 9router base URL that matches your deployment:
+
+```text
+# Hosted 9router: HTTPS is required
+https://9router.mibp.me
+
+# Local 9router: localhost is allowed on any port
+http://localhost:20128
+http://localhost:8080
+http://localhost:3000
+```
+
+Plain HTTP is intentionally rejected for every non-local host.
+
+The non-secret configuration is written to:
+
+```text
+~/.config/mcp-media-9router/config.json
+```
+
+The API key is stored in macOS Keychain and is not written to `opencode.json`.
+
+Run a local validation after setup:
 
 ```bash
+mm9 check
+```
+
+Run a real authenticated request to verify the 9router connection. This may consume provider quota:
+
+```bash
+mm9 check --online
+```
+
+Quit and restart OpenCode after `mm9 setup --opencode`. OpenCode loads MCP configuration only at startup.
+
+### Install From a Local Checkout
+
+For development or testing before the GitHub repository is public:
+
+```bash
+git clone https://github.com/mhiqrambg/mcp-media-9router.git
+cd mcp-media-9router
 npm install
 npm run build
-```
-
-Untuk memakai command `mm9` dari source lokal sebelum installer GitHub tersedia, jalankan:
-
-```bash
 npm link
-mm9 help
+mm9 setup --opencode
 ```
 
-Hapus link lokal saat tidak diperlukan:
+Remove the local command link when it is no longer needed:
 
 ```bash
 npm unlink -g mcp-media-9router
 ```
 
-## Konfigurasi Lokal
-
-Jangan menyimpan API key ke Git. Salin contoh environment file:
-
-```bash
-cp .env.example .env
-```
-
-Lalu isi `.env` dengan API key yang sudah di-rotate. File `.env` sudah diabaikan oleh Git.
-
-```dotenv
-NINE_ROUTER_BASE_URL=https://9router.mibp.me
-NINE_ROUTER_API_KEY=replace-with-a-new-api-key
-
-# Provider default jika tool call tidak memiliki field model.
-NINE_ROUTER_FETCH_MODEL=exa
-NINE_ROUTER_SEARCH_MODEL=exa
-
-# Provider yang boleh dipilih oleh AI agent.
-NINE_ROUTER_FETCH_MODELS=exa,firecrawl,jina-reader,tavily
-NINE_ROUTER_SEARCH_MODELS=exa,gpse,brave,openai
-
-# Urutan provider ketika tool call memakai model: auto.
-NINE_ROUTER_FETCH_FALLBACK_MODELS=exa,firecrawl,jina-reader,tavily
-NINE_ROUTER_SEARCH_FALLBACK_MODELS=exa,gpse,brave,openai
-
-# Batas operasi MCP.
-MCP_MEDIA_LOG_LEVEL=info
-MCP_MEDIA_REQUEST_TIMEOUT_MS=30000
-MCP_MEDIA_MAX_RETRIES=0
-MCP_MEDIA_MAX_OUTPUT_CHARS=100000
-```
-
-Server Node.js saat ini membaca environment dari shell, bukan file `.env` secara otomatis. Untuk menjalankannya dari terminal, ekspor variabel berikut atau gunakan environment variables di konfigurasi MCP client:
-
-```bash
-export NINE_ROUTER_BASE_URL="https://9router.mibp.me"
-export NINE_ROUTER_API_KEY="replace-with-a-new-api-key"
-export NINE_ROUTER_FETCH_MODEL="exa"
-export NINE_ROUTER_SEARCH_MODEL="exa"
-```
-
-`NINE_ROUTER_BASE_URL` wajib memakai HTTPS. API key yang pernah terpapar pada chat, issue, terminal history, atau repository harus segera di-revoke dan di-rotate.
-
-## Setup Otomatis dengan `mm9`
-
-Di macOS, `mm9 setup` adalah cara yang direkomendasikan untuk konfigurasi. Wizard menanyakan base URL, API key, provider default, provider yang diizinkan, dan urutan fallback. Menekan Enter memakai nilai default.
-
-```bash
-mm9 setup
-```
-
-Untuk sekaligus menambahkan MCP server ke konfigurasi global OpenCode, gunakan:
-
-```bash
-mm9 setup --opencode
-```
-
-Default provider:
-
-```text
-Fetch:  exa -> firecrawl -> jina-reader -> tavily
-Search: exa -> gpse -> brave -> openai
-```
-
-Entry OpenCode tidak memasukkan API key ke `opencode.json`; OpenCode memanggil `mm9 start`, yang mengambil key dari macOS Keychain. Registrasi mempertahankan MCP server lain dan menulis ulang konfigurasi sebagai JSON valid, termasuk bila file sebelumnya memakai trailing comma. Quit lalu restart OpenCode setelahnya.
-
-Command yang tersedia:
-
-```bash
-mm9 list            # Tampilkan policy aktif tanpa mencetak API key
-mm9 check           # Validasi Node.js, konfigurasi, Keychain, dan policy
-mm9 check --online  # Jalankan satu request search kecil ke 9router; dapat memakai quota/provider usage
-mm9 start           # Jalankan MCP server stdio dengan konfigurasi tersimpan
-mm9 update          # Update instalasi yang dibuat oleh install.sh
-mm9 help            # Tampilkan bantuan
-```
-
-Contoh hasil `mm9 list`:
-
-```text
-Status: configured
-Base URL: https://9router.mibp.me
-API key: configured
-
-Fetch:
-  Default: exa
-  Allowed: exa, firecrawl, jina-reader, tavily
-  Fallback: exa -> firecrawl -> jina-reader -> tavily
-```
-
 ## Update
 
-Untuk instalasi yang dibuat melalui `install.sh`, update ke branch `main` terbaru dengan:
+For an installation created by `install.sh`, update to the latest `main` branch with:
 
 ```bash
 mm9 update
 ```
 
-Command ini hanya menerima layout installer `~/.mcp-media-9router`. Ia berhenti jika terdapat perubahan lokal agar perubahan pengguna tidak tertimpa. Update menjalankan `git pull --ff-only`, `npm ci`, dan build ulang, lalu memperbarui entry OpenCode bila perlu.
+The command:
 
-Setelah update, quit lalu restart OpenCode.
+1. Refuses to update when the installed checkout has local changes.
+2. Runs `git pull --ff-only origin main`.
+3. Runs `npm ci` and rebuilds the project.
+4. Refreshes the OpenCode MCP registration.
 
-Untuk checkout source development, jangan gunakan `mm9 update`. Jalankan dari folder repository:
+Restart OpenCode after a successful update.
+
+`mm9 update` intentionally does not update a development checkout. Update one manually instead:
 
 ```bash
 git pull --ff-only
@@ -214,183 +153,100 @@ npm install
 npm run build
 ```
 
-## Menjalankan Server Lokal
+## Features
 
-Build terlebih dahulu, kemudian jalankan:
+### Web Search
+
+The `web_search` MCP tool calls `POST /v1/search` through 9router and returns normalized results with titles, URLs, snippets, sources, authors, publication dates, and ranks.
+
+Default search providers:
+
+```text
+exa -> gpse -> brave -> openai
+```
+
+### Web Fetch
+
+The `web_fetch` MCP tool calls `POST /v1/web/fetch` through 9router and returns provider-extracted Markdown.
+
+Default fetch providers:
+
+```text
+exa -> firecrawl -> jina-reader -> tavily
+```
+
+### Provider Policy
+
+Fetch and search have independent provider policies. Setup configures a default provider, an allowlist, and a fallback order for each tool.
+
+| Requested `model` | Behavior |
+|---|---|
+| Omitted | Uses the configured default provider once. |
+| Specific provider | Uses that provider once. It must be on the relevant allowlist. |
+| `auto` | Tries configured fallback providers in order. |
+
+Fallback only occurs for upstream timeouts, rate limits, and temporary provider unavailability. Invalid inputs, invalid URLs, authentication failures, and missing content do not trigger fallback.
+
+### Safety and Limits
+
+- Fetch accepts public HTTP and HTTPS URLs only.
+- Localhost, private IP ranges, URL credentials, and unsafe URL schemes are rejected before a request reaches 9router.
+- `max_characters: 0` can request full content from 9router.
+- `MCP_MEDIA_MAX_OUTPUT_CHARS` still limits the output passed to the AI agent.
+- Search and fetch results are untrusted external content. Treat them as reference material, not instructions.
+
+## Usage
+
+### CLI
 
 ```bash
-npm run build
-npm start
+mm9 setup --opencode  # Configure 9router and register OpenCode
+mm9 list              # Show active provider policy without showing the API key
+mm9 check             # Validate local configuration and Keychain access
+mm9 check --online    # Test an authenticated 9router request
+mm9 update            # Update an install.sh installation
+mm9 uninstall         # Remove the GitHub installer installation
 ```
 
-Server menggunakan `stdio`, sehingga terminal tampak diam setelah startup. Ini normal: server menunggu request JSON-RPC dari MCP client. Jangan mengetik JSON biasa ke terminal karena protocol MCP memakai framing khusus.
+`mm9 start` is normally started by OpenCode. It launches the stdio MCP server using the saved configuration.
 
-Untuk development tanpa build ulang:
+### In OpenCode
 
-```bash
-npm run dev
+After setup and an OpenCode restart, ask the agent to use the tools directly.
+
+Search with the configured default provider:
+
+```text
+Use web_search to find the latest AI news in Indonesia. Return five results.
 ```
 
-## Test dengan MCP Inspector
+Search with a selected provider:
 
-MCP Inspector adalah cara paling mudah untuk memastikan tools dapat dipanggil sebelum menghubungkan OpenCode atau Claude Desktop.
-
-```bash
-NINE_ROUTER_BASE_URL="https://9router.mibp.me" \
-NINE_ROUTER_API_KEY="$NINE_ROUTER_API_KEY" \
-NINE_ROUTER_FETCH_MODEL="exa" \
-NINE_ROUTER_SEARCH_MODEL="exa" \
-npx -y @modelcontextprotocol/inspector node dist/index.js
+```text
+Use web_search with model brave to find the official Model Context Protocol documentation.
 ```
 
-Setelah Inspector terbuka:
+Search with fallback:
 
-1. Sambungkan ke server.
-2. Pastikan `web_search` dan `web_fetch` muncul pada daftar tools.
-3. Jalankan contoh `web_search` atau `web_fetch` di bagian [Tools](#tools).
-4. Pastikan respons memuat `provider`, `attempted_models`, dan hasil yang diharapkan.
-
-## Menghubungkan ke OpenCode
-
-Gunakan path absolut menuju hasil build lokal. Contoh konfigurasi tersedia di [`examples/opencode.json`](./examples/opencode.json).
-
-```json
-{
-  "mcp": {
-    "media-9router-local": {
-      "type": "local",
-      "command": [
-        "node",
-        "/Users/your-user/Documents/Projects/mcp-media-9router/dist/index.js"
-      ],
-      "environment": {
-        "NINE_ROUTER_BASE_URL": "https://9router.mibp.me",
-        "NINE_ROUTER_API_KEY": "your-new-api-key",
-        "NINE_ROUTER_FETCH_MODEL": "exa",
-        "NINE_ROUTER_SEARCH_MODEL": "exa"
-      },
-      "enabled": true
-    }
-  }
-}
+```text
+Use web_search with model auto to find recent AI security news.
 ```
 
-Masukkan provider allowlist dan fallback environment variables jika Anda ingin menimpa nilai default. Jangan commit konfigurasi yang berisi API key.
+Fetch with a selected provider:
 
-## Menghubungkan ke Claude Desktop
-
-Contoh konfigurasi tersedia di [`examples/claude-desktop.json`](./examples/claude-desktop.json).
-
-```json
-{
-  "mcpServers": {
-    "media-9router-local": {
-      "command": "node",
-      "args": [
-        "/Users/your-user/Documents/Projects/mcp-media-9router/dist/index.js"
-      ],
-      "env": {
-        "NINE_ROUTER_BASE_URL": "https://9router.mibp.me",
-        "NINE_ROUTER_API_KEY": "your-new-api-key",
-        "NINE_ROUTER_FETCH_MODEL": "exa",
-        "NINE_ROUTER_SEARCH_MODEL": "exa"
-      }
-    }
-  }
-}
+```text
+Use web_fetch with model firecrawl to fetch and summarize https://example.com.
 ```
 
-Restart Claude Desktop setelah menyimpan konfigurasi.
+Fetch with fallback:
 
-## Instalasi Setelah Publish ke npm
-
-Bagian ini berlaku setelah package sudah dipublish sebagai package public. Sebelum itu, gunakan [Instalasi Lokal Sebelum Publish](#instalasi-lokal-sebelum-publish).
-
-Jalankan tanpa global install:
-
-```bash
-npx -y mcp-media-9router
+```text
+Use web_fetch with model auto to fetch https://example.com as Markdown.
 ```
 
-Atau pasang secara global:
+### MCP Tool Inputs
 
-```bash
-npm install -g mcp-media-9router
-mcp-media-9router
-```
-
-Contoh Claude Desktop setelah publish:
-
-```json
-{
-  "mcpServers": {
-    "media-9router": {
-      "command": "npx",
-      "args": ["-y", "mcp-media-9router"],
-      "env": {
-        "NINE_ROUTER_BASE_URL": "https://9router.mibp.me",
-        "NINE_ROUTER_API_KEY": "your-new-api-key"
-      }
-    }
-  }
-}
-```
-
-## Uninstall
-
-Untuk menjalankan uninstaller:
-
-```bash
-mm9 uninstall
-```
-
-Uninstaller meminta konfirmasi, menghapus launcher `mm9`, source install, dan entry `media-9router` dari konfigurasi OpenCode. Konfigurasi provider serta API key di macOS Keychain dipertahankan secara default.
-
-Untuk menghapus juga konfigurasi dan API key:
-
-```bash
-bash ~/.mcp-media-9router/uninstall.sh --purge
-```
-
-Untuk non-interaktif:
-
-```bash
-bash ~/.mcp-media-9router/uninstall.sh --yes
-```
-
-Jika dipasang global melalui npm:
-
-```bash
-npm uninstall -g mcp-media-9router
-```
-
-Jika dipasang dari GitHub:
-
-```bash
-npm uninstall -g mcp-media-9router
-```
-
-Jika digunakan melalui `npx`, tidak ada package global yang perlu dihapus. Untuk menghapus cache npm secara opsional:
-
-```bash
-npm cache clean --force
-```
-
-Untuk menghapus instalasi lokal dari source:
-
-```bash
-rm -rf /path/to/mcp-media-9router
-```
-
-Sebelum menghapus source, hapus juga entry `media-9router-local` dari konfigurasi OpenCode, Claude Desktop, atau MCP client lain agar client tidak mencoba menjalankan path yang sudah tidak ada.
-
-Untuk menghapus konfigurasi CLI lokal, hapus file konfigurasi dan item Keychain bernama `mcp-media-9router` melalui aplikasi Keychain Access. Ini sengaja tidak dilakukan otomatis oleh `npm uninstall` agar API key tidak terhapus tanpa persetujuan pengguna.
-
-## Tools
-
-### `web_search`
-
-Mencari informasi melalui 9router. Provider default digunakan jika `model` tidak diisi.
+`web_search`:
 
 ```json
 {
@@ -403,31 +259,16 @@ Mencari informasi melalui 9router. Provider default digunakan jika `model` tidak
 }
 ```
 
-| Field | Wajib | Deskripsi |
+| Field | Required | Description |
 |---|---:|---|
-| `query` | Ya | Kata kunci pencarian, 1-500 karakter. |
-| `model` | Tidak | Provider yang ada pada allowlist search, atau `auto`. |
-| `search_type` | Tidak | Tipe pencarian untuk 9router. Default: `web`. |
-| `max_results` | Tidak | Jumlah hasil, 1-20. Default: `5`. |
-| `country` | Tidak | Preferensi negara yang diteruskan ke 9router, contoh `indonesia`. |
-| `language` | Tidak | Preferensi bahasa yang diteruskan ke 9router, contoh `indonesia`. |
+| `query` | Yes | Search query, from 1 to 500 characters. |
+| `model` | No | An allowed search provider, or `auto`. |
+| `search_type` | No | 9router search type. Default: `web`. |
+| `max_results` | No | Result count from 1 to 20. Default: `5`. |
+| `country` | No | Country preference forwarded to 9router. |
+| `language` | No | Language preference forwarded to 9router. |
 
-Contoh auto fallback:
-
-```json
-{
-  "query": "Berita AI terbaru",
-  "model": "auto",
-  "search_type": "web",
-  "max_results": 5,
-  "country": "indonesia",
-  "language": "indonesia"
-}
-```
-
-### `web_fetch`
-
-Mengambil URL publik dan meminta hasil Markdown dari 9router.
+`web_fetch`:
 
 ```json
 {
@@ -438,100 +279,38 @@ Mengambil URL publik dan meminta hasil Markdown dari 9router.
 }
 ```
 
-| Field | Wajib | Deskripsi |
+| Field | Required | Description |
 |---|---:|---|
-| `url` | Ya | URL publik HTTP atau HTTPS. |
-| `model` | Tidak | Provider yang ada pada allowlist fetch, atau `auto`. |
-| `format` | Tidak | Saat ini hanya `markdown`. |
-| `max_characters` | Tidak | Batas karakter ke 9router. `0` berarti meminta konten penuh. |
+| `url` | Yes | A public HTTP or HTTPS URL. |
+| `model` | No | An allowed fetch provider, or `auto`. |
+| `format` | No | Only `markdown` is currently supported. |
+| `max_characters` | No | Maximum characters requested from 9router. `0` requests full content. |
 
-`max_characters: 0` tidak melewati batas `MCP_MEDIA_MAX_OUTPUT_CHARS`; server MCP tetap memotong output besar untuk melindungi context window AI agent.
+## Uninstall
 
-## Pemilihan Provider dan Fallback
+For an installation created by `install.sh`:
 
-Fetch dan search memiliki policy terpisah.
-
-```dotenv
-NINE_ROUTER_FETCH_MODEL=exa
-NINE_ROUTER_FETCH_MODELS=exa,firecrawl,jina-reader,tavily
-NINE_ROUTER_FETCH_FALLBACK_MODELS=exa,firecrawl,jina-reader,tavily
-
-NINE_ROUTER_SEARCH_MODEL=exa
-NINE_ROUTER_SEARCH_MODELS=exa,gpse,brave,openai
-NINE_ROUTER_SEARCH_FALLBACK_MODELS=exa,gpse,brave,openai
+```bash
+mm9 uninstall
 ```
 
-| Nilai `model` | Perilaku |
-|---|---|
-| Tidak dikirim | Memakai provider default sekali dan fail-fast bila gagal. |
-| Nama provider | Memakai provider tersebut sekali; harus tercantum dalam `*_MODELS`. |
-| `auto` | Mencoba provider pada `*_FALLBACK_MODELS` secara berurutan. |
+The interactive uninstaller removes the `mm9` launcher, `~/.mcp-media-9router`, and the `media-9router` OpenCode entry. It preserves the provider configuration and Keychain API key by default.
 
-Fallback hanya terjadi untuk timeout, rate limit, atau upstream tidak tersedia. Fallback tidak dijalankan untuk URL invalid, input invalid, API key salah, permission error, atau konten yang memang tidak ditemukan. Hasil tool menyertakan `provider`, `attempted_models`, dan `fallback_used` agar agent dapat melihat provider yang berhasil dipakai.
+To remove all saved configuration and the Keychain item as well:
 
-## Kontrak API 9router
-
-Server memanggil endpoint berikut:
-
-- `POST /v1/search`
-- `POST /v1/web/fetch`
-
-Request dikirim menggunakan `Authorization: Bearer <NINE_ROUTER_API_KEY>`, `Content-Type: application/json`, dan `X-Request-Id`.
-
-Payload search:
-
-```json
-{
-  "model": "exa",
-  "query": "What is the latest news about AI?",
-  "search_type": "web",
-  "max_results": 5,
-  "country": "indonesia",
-  "language": "indonesia"
-}
+```bash
+bash ~/.mcp-media-9router/uninstall.sh --purge
 ```
 
-Payload fetch:
+For a non-interactive uninstall:
 
-```json
-{
-  "model": "exa",
-  "url": "https://example.com",
-  "format": "markdown",
-  "max_characters": 0
-}
+```bash
+bash ~/.mcp-media-9router/uninstall.sh --yes
 ```
-
-Respons provider 9router dinormalisasi ke output MCP yang stabil. Search mengembalikan hasil dengan `title`, `url`, `snippet`, `source`, `author`, dan `rank`. Fetch mengembalikan `markdown`, `title`, bahasa, tanggal publikasi, serta status truncation.
 
 ## Security
 
-- Jangan masukkan API key ke repository, README, issue publik, atau chat.
-- Gunakan API key baru jika key pernah terpapar.
-- Konten hasil fetch adalah data eksternal tidak tepercaya dan dapat memuat prompt injection atau informasi salah. Perlakukan sebagai referensi, bukan instruksi.
-- Validasi URL di MCP server adalah pertahanan tambahan. Proxy 9router tetap wajib memvalidasi DNS, redirect, private network, dan metadata endpoint untuk mencegah SSRF secara menyeluruh.
-
-## Development
-
-Jalankan seluruh pemeriksaan sebelum membuka pull request:
-
-```bash
-npm run typecheck
-npm run lint
-npm test
-npm run build
-npm audit --omit=dev
-```
-
-## Roadmap
-
-- Phase 1: `web_search`, `web_fetch`, provider policy, proxy authentication, dan stdio transport.
-- Phase 2: image, video, dan news search; PDF extraction; document parsing.
-- Phase 3: optional Redis cache, rate limiting, OpenTelemetry observability, HTTP transport, dan multi-provider routing lanjutan.
-
-## Contributing and Security
-
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before submitting changes. Report vulnerabilities following [SECURITY.md](./SECURITY.md).
+Never commit an API key or paste one into public issues, chats, or documentation. Rotate any API key that has been exposed. See [SECURITY.md](./SECURITY.md) for vulnerability reporting.
 
 ## License
 

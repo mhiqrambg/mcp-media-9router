@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { isAllowedNineRouterBaseUrl, nineRouterBaseUrlMessage } from "./base-url.js";
 
 const providerNameSchema = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 
 const environmentSchema = z.object({
-  NINE_ROUTER_BASE_URL: z.url().refine((value) => value.startsWith("https://"), {
-    message: "must use https",
+  NINE_ROUTER_BASE_URL: z.url().refine(isAllowedNineRouterBaseUrl, {
+    message: nineRouterBaseUrlMessage,
   }),
   NINE_ROUTER_API_KEY: z.string().min(1),
   NINE_ROUTER_FETCH_MODEL: providerNameSchema.default("exa"),

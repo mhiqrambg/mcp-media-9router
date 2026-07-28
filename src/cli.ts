@@ -17,7 +17,7 @@ Usage:
   mm9 check       Validate configuration and Keychain access
   mm9 check --online  Run one small authenticated search request (may incur provider usage)
   mm9 start       Start the MCP stdio server using saved configuration
-  mm9 update      Update a GitHub-installer installation, dependencies, and build
+  mm9 update      Update a GitHub installer installation, dependencies, and build
   mm9 uninstall   Run the interactive uninstaller
   mm9 help        Show this help
 `;
@@ -25,8 +25,8 @@ Usage:
 async function ask(question: string, defaultValue: string, secret = false): Promise<string> {
   const prompt = `${question} [${secret ? "hidden" : defaultValue}]: `;
   if (secret) {
-    // Node readline cannot hide terminal input without a dependency; it is never echoed back or stored in config.
-    process.stderr.write("API key input will be visible in this terminal. Paste a fresh key, then rotate it if terminal history is a concern.\n");
+    // Node readline cannot hide terminal input without a dependency; the key is stored in Keychain, not the config file.
+    process.stderr.write("API key input is visible in this terminal. It will be stored in macOS Keychain, not the configuration file.\n");
   }
   const readline = createInterface({ input, output });
   try {
@@ -101,7 +101,10 @@ async function check(online: boolean): Promise<void> {
   report(Boolean(config), `Configuration file ${config ? "found" : "missing"}`);
   report(Boolean(apiKey), `API key ${apiKey ? "configured in macOS Keychain" : "missing from macOS Keychain"}`);
   if (config) {
-    report(config.baseUrl.startsWith("https://"), "9router base URL uses HTTPS");
+    report(
+      config.baseUrl.startsWith("https://") || config.baseUrl.startsWith("http://localhost"),
+      "9router base URL uses HTTPS or a permitted local endpoint",
+    );
     report(config.fetch.allowedModels.includes(config.fetch.defaultModel), "Fetch provider policy is valid");
     report(config.search.allowedModels.includes(config.search.defaultModel), "Search provider policy is valid");
   }

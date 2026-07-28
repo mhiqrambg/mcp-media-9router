@@ -2,6 +2,7 @@ import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { z } from "zod";
+import { isAllowedNineRouterBaseUrl, nineRouterBaseUrlMessage } from "./config/base-url.js";
 import type { AppConfig } from "./config/env.js";
 
 export const CONFIG_PATH = join(homedir(), ".config", "mcp-media-9router", "config.json");
@@ -10,7 +11,7 @@ export const KEYCHAIN_ACCOUNT = "default";
 
 const providerName = z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/);
 const persistedConfigSchema = z.object({
-  baseUrl: z.url().refine((value) => value.startsWith("https://"), "must use https"),
+  baseUrl: z.url().refine(isAllowedNineRouterBaseUrl, nineRouterBaseUrlMessage),
   fetch: z.object({
     defaultModel: providerName,
     allowedModels: z.array(providerName).min(1),
@@ -29,7 +30,7 @@ const persistedConfigSchema = z.object({
 export type PersistedConfig = z.infer<typeof persistedConfigSchema>;
 
 export const DEFAULT_PERSISTED_CONFIG: PersistedConfig = {
-  baseUrl: "https://9router.mibp.me",
+  baseUrl: "http://localhost:20128",
   fetch: {
     defaultModel: "exa",
     allowedModels: ["exa", "firecrawl", "jina-reader", "tavily"],
