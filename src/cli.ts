@@ -12,13 +12,12 @@ import { updateGitHubInstallation } from "./updater.js";
 const HELP = `mm9 - mcp-media-9router command line utility
 
 Usage:
-  mm9 setup       Configure 9router and optionally register OpenCode
+  mm9 setup [--opencode]  Configure 9router; --opencode also registers OpenCode
   mm9 list        Show configuration without exposing the API key
   mm9 check       Validate configuration and Keychain access
   mm9 check --online  Run one small authenticated search request (may incur provider usage)
   mm9 start       Start the MCP stdio server using saved configuration
   mm9 update      Update a GitHub-installer installation, dependencies, and build
-  mm9 opencode install  Register this MCP server in the global OpenCode config
   mm9 uninstall   Run the interactive uninstaller
   mm9 help        Show this help
 `;
@@ -46,7 +45,7 @@ function parseModels(value: string): string[] {
   return models;
 }
 
-async function setup(): Promise<void> {
+async function setup(registerWithOpenCode: boolean): Promise<void> {
   const current = (await readPersistedConfig()) ?? DEFAULT_PERSISTED_CONFIG;
   const existingApiKey = await readApiKey();
   process.stdout.write("\nmcp-media-9router setup\nPress Enter to keep the displayed default.\n\n");
@@ -71,10 +70,11 @@ async function setup(): Promise<void> {
   await writePersistedConfig(config);
   process.stdout.write(`\nConfiguration saved to ${CONFIG_PATH}. API key saved in macOS Keychain.\n`);
 
-  const register = (await ask("Add this server to global OpenCode configuration? (y/N)", "n")).toLowerCase();
-  if (register === "y" || register === "yes") {
+  if (registerWithOpenCode) {
     await registerOpenCode();
     process.stdout.write("OpenCode configuration updated. Quit and restart OpenCode to load the MCP server.\n");
+  } else {
+    process.stdout.write("Use `mm9 setup --opencode` to register this server in OpenCode.\n");
   }
   process.stdout.write("Run `mm9 check` to validate the installation.\n");
 }
@@ -168,18 +168,16 @@ async function registerOpenCode(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  const [command, option, subcommand] = process.argv.slice(2);
+  const [command, option] = process.argv.slice(2);
   switch (command) {
-    case "setup": await setup(); break;
+    case "setup":
+      if (option !== undefined && option !== "--opencode") throw new Error(`Unknown setup option '${option}'.\n\n${HELP}`);
+      await setup(option === "--opencode");
+      break;
     case "list": await list(); break;
     case "check": await check(option === "--online"); break;
     case "start": await start(); break;
     case "update": await update(); break;
-    case "opencode":
-      if (option !== "install" || subcommand !== undefined) throw new Error(`Unknown opencode command.\n\n${HELP}`);
-      await registerOpenCode();
-      process.stdout.write("OpenCode configuration updated. Quit and restart OpenCode to load the MCP server.\n");
-      break;
     case "uninstall": await uninstall(); break;
     case "help": case "--help": case "-h": case undefined: process.stdout.write(HELP); break;
     default: throw new Error(`Unknown command '${command}'.\n\n${HELP}`);

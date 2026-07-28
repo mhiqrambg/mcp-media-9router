@@ -75,7 +75,7 @@ source ~/.zshrc
 Kemudian gunakan command langsung, tanpa `node dist/cli.js`:
 
 ```bash
-mm9 setup
+mm9 setup --opencode
 mm9 check
 mm9 list
 mm9 update
@@ -155,6 +155,12 @@ Di macOS, `mm9 setup` adalah cara yang direkomendasikan untuk konfigurasi. Wizar
 mm9 setup
 ```
 
+Untuk sekaligus menambahkan MCP server ke konfigurasi global OpenCode, gunakan:
+
+```bash
+mm9 setup --opencode
+```
+
 Default provider:
 
 ```text
@@ -162,15 +168,7 @@ Fetch:  exa -> firecrawl -> jina-reader -> tavily
 Search: exa -> gpse -> brave -> openai
 ```
 
-Pada akhir setup, pilih `y` jika ingin menambahkan MCP server ke konfigurasi global OpenCode. Entry yang dibuat tidak memasukkan API key ke `opencode.json`; OpenCode memanggil `mm9 start`, yang mengambil key dari macOS Keychain.
-
-Jika sebelumnya memilih `n`, atau registrasi OpenCode gagal karena konfigurasi memakai komentar atau trailing comma, jalankan tanpa mengulang wizard:
-
-```bash
-mm9 opencode install
-```
-
-Command tersebut mempertahankan MCP server lain dan menulis ulang konfigurasi sebagai JSON valid. Quit lalu restart OpenCode setelahnya.
+Entry OpenCode tidak memasukkan API key ke `opencode.json`; OpenCode memanggil `mm9 start`, yang mengambil key dari macOS Keychain. Registrasi mempertahankan MCP server lain dan menulis ulang konfigurasi sebagai JSON valid, termasuk bila file sebelumnya memakai trailing comma. Quit lalu restart OpenCode setelahnya.
 
 Command yang tersedia:
 
@@ -180,7 +178,6 @@ mm9 check           # Validasi Node.js, konfigurasi, Keychain, dan policy
 mm9 check --online  # Jalankan satu request search kecil ke 9router; dapat memakai quota/provider usage
 mm9 start           # Jalankan MCP server stdio dengan konfigurasi tersimpan
 mm9 update          # Update instalasi yang dibuat oleh install.sh
-mm9 opencode install # Tambahkan atau perbarui server di konfigurasi global OpenCode
 mm9 help            # Tampilkan bantuan
 ```
 
