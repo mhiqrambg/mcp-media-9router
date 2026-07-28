@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
+import { readFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
@@ -9,17 +10,28 @@ import { readApiKey, saveApiKey } from "./keychain.js";
 import { registerOpenCodeConfig } from "./opencode-config.js";
 import { updateGitHubInstallation } from "./updater.js";
 
-const HELP = `mm9 - mcp-media-9router command line utility
+const HELP = `Usage: mm9 [OPTIONS] COMMAND
 
-Usage:
-  mm9 setup [--opencode]  Configure 9router; --opencode also registers OpenCode
-  mm9 list        Show configuration without exposing the API key
-  mm9 check       Validate configuration and Keychain access
-  mm9 check --online  Run one small authenticated search request (may incur provider usage)
-  mm9 start       Start the MCP stdio server using saved configuration
-  mm9 update      Update a GitHub installer installation, dependencies, and build
-  mm9 uninstall   Run the interactive uninstaller
-  mm9 help        Show this help
+  mcp-media-9router - Web search and web fetch MCP gateway for 9router.
+
+Options:
+  --version  Show the version and exit.
+  --help     Show this message and exit.
+
+Commands:
+  setup      Configure 9router providers and API key.
+  list       Show the active configuration without exposing the API key.
+  check      Validate local configuration, Keychain access, and provider policy.
+  start      Start the stdio MCP server with the saved configuration.
+  update     Update a GitHub installer installation and rebuild the project.
+  uninstall  Remove the GitHub installer installation interactively.
+  help       Show this message and exit.
+
+Setup options:
+  mm9 setup --opencode  Configure 9router and register the server in OpenCode.
+
+Check options:
+  mm9 check --online    Run a small authenticated search request; may use quota.
 `;
 
 async function ask(question: string, defaultValue: string, secret = false): Promise<string> {
@@ -170,6 +182,12 @@ async function registerOpenCode(): Promise<void> {
   await registerOpenCodeConfig(configPath, [process.execPath, cliPath, "start"]);
 }
 
+async function showVersion(): Promise<void> {
+  const packagePath = fileURLToPath(new URL("../package.json", import.meta.url));
+  const packageJson = JSON.parse(await readFile(packagePath, "utf8")) as { version?: string };
+  process.stdout.write(`${packageJson.version ?? "unknown"}\n`);
+}
+
 async function main(): Promise<void> {
   const [command, option] = process.argv.slice(2);
   switch (command) {
@@ -183,6 +201,7 @@ async function main(): Promise<void> {
     case "update": await update(); break;
     case "uninstall": await uninstall(); break;
     case "help": case "--help": case "-h": case undefined: process.stdout.write(HELP); break;
+    case "--version": case "-v": await showVersion(); break;
     default: throw new Error(`Unknown command '${command}'.\n\n${HELP}`);
   }
 }

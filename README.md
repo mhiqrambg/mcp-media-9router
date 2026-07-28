@@ -206,6 +206,8 @@ mm9 check             # Validate local configuration and Keychain access
 mm9 check --online    # Test an authenticated 9router request
 mm9 update            # Update an install.sh installation
 mm9 uninstall         # Remove the GitHub installer installation
+mm9 --help            # Show command help
+mm9 --version         # Show the installed version
 ```
 
 `mm9 start` is normally started by OpenCode. It launches the stdio MCP server using the saved configuration.
