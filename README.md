@@ -78,6 +78,7 @@ Kemudian gunakan command langsung, tanpa `node dist/cli.js`:
 mm9 setup
 mm9 check
 mm9 list
+mm9 update
 ```
 
 Installer aman dijalankan ulang. Ia memperbarui source hanya saat working tree instalasi bersih; local change tidak akan ditimpa. Saat repository GitHub belum tersedia, gunakan [Instalasi Lokal Sebelum Publish](#instalasi-lokal-sebelum-publish).
@@ -178,6 +179,7 @@ mm9 list            # Tampilkan policy aktif tanpa mencetak API key
 mm9 check           # Validasi Node.js, konfigurasi, Keychain, dan policy
 mm9 check --online  # Jalankan satu request search kecil ke 9router; dapat memakai quota/provider usage
 mm9 start           # Jalankan MCP server stdio dengan konfigurasi tersimpan
+mm9 update          # Update instalasi yang dibuat oleh install.sh
 mm9 opencode install # Tambahkan atau perbarui server di konfigurasi global OpenCode
 mm9 help            # Tampilkan bantuan
 ```
@@ -193,6 +195,26 @@ Fetch:
   Default: exa
   Allowed: exa, firecrawl, jina-reader, tavily
   Fallback: exa -> firecrawl -> jina-reader -> tavily
+```
+
+## Update
+
+Untuk instalasi yang dibuat melalui `install.sh`, update ke branch `main` terbaru dengan:
+
+```bash
+mm9 update
+```
+
+Command ini hanya menerima layout installer `~/.mcp-media-9router`. Ia berhenti jika terdapat perubahan lokal agar perubahan pengguna tidak tertimpa. Update menjalankan `git pull --ff-only`, `npm ci`, dan build ulang, lalu memperbarui entry OpenCode bila perlu.
+
+Setelah update, quit lalu restart OpenCode.
+
+Untuk checkout source development, jangan gunakan `mm9 update`. Jalankan dari folder repository:
+
+```bash
+git pull --ff-only
+npm install
+npm run build
 ```
 
 ## Menjalankan Server Lokal

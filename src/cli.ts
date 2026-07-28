@@ -7,6 +7,7 @@ import { NineRouterClient } from "./clients/nine-router-client.js";
 import { CONFIG_PATH, DEFAULT_PERSISTED_CONFIG, configToAppConfig, readPersistedConfig, toEnvironment, writePersistedConfig } from "./cli-config.js";
 import { readApiKey, saveApiKey } from "./keychain.js";
 import { registerOpenCodeConfig } from "./opencode-config.js";
+import { updateGitHubInstallation } from "./updater.js";
 
 const HELP = `mm9 - mcp-media-9router command line utility
 
@@ -16,6 +17,7 @@ Usage:
   mm9 check       Validate configuration and Keychain access
   mm9 check --online  Run one small authenticated search request (may incur provider usage)
   mm9 start       Start the MCP stdio server using saved configuration
+  mm9 update      Update a GitHub-installer installation, dependencies, and build
   mm9 opencode install  Register this MCP server in the global OpenCode config
   mm9 uninstall   Run the interactive uninstaller
   mm9 help        Show this help
@@ -149,6 +151,14 @@ async function uninstall(): Promise<void> {
   });
 }
 
+async function update(): Promise<void> {
+  const cliPath = fileURLToPath(import.meta.url);
+  process.stdout.write("Updating mcp-media-9router...\n");
+  await updateGitHubInstallation(cliPath);
+  await registerOpenCode();
+  process.stdout.write("Update complete. Quit and restart OpenCode to load the updated MCP server.\n");
+}
+
 async function registerOpenCode(): Promise<void> {
   const home = process.env.HOME;
   if (!home) throw new Error("HOME is not set; unable to locate OpenCode configuration.");
@@ -164,6 +174,7 @@ async function main(): Promise<void> {
     case "list": await list(); break;
     case "check": await check(option === "--online"); break;
     case "start": await start(); break;
+    case "update": await update(); break;
     case "opencode":
       if (option !== "install" || subcommand !== undefined) throw new Error(`Unknown opencode command.\n\n${HELP}`);
       await registerOpenCode();
