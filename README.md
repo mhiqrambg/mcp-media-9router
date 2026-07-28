@@ -163,6 +163,14 @@ Search: exa -> gpse -> brave -> openai
 
 Pada akhir setup, pilih `y` jika ingin menambahkan MCP server ke konfigurasi global OpenCode. Entry yang dibuat tidak memasukkan API key ke `opencode.json`; OpenCode memanggil `mm9 start`, yang mengambil key dari macOS Keychain.
 
+Jika sebelumnya memilih `n`, atau registrasi OpenCode gagal karena konfigurasi memakai komentar atau trailing comma, jalankan tanpa mengulang wizard:
+
+```bash
+mm9 opencode install
+```
+
+Command tersebut mempertahankan MCP server lain dan menulis ulang konfigurasi sebagai JSON valid. Quit lalu restart OpenCode setelahnya.
+
 Command yang tersedia:
 
 ```bash
@@ -170,6 +178,7 @@ mm9 list            # Tampilkan policy aktif tanpa mencetak API key
 mm9 check           # Validasi Node.js, konfigurasi, Keychain, dan policy
 mm9 check --online  # Jalankan satu request search kecil ke 9router; dapat memakai quota/provider usage
 mm9 start           # Jalankan MCP server stdio dengan konfigurasi tersimpan
+mm9 opencode install # Tambahkan atau perbarui server di konfigurasi global OpenCode
 mm9 help            # Tampilkan bantuan
 ```
 

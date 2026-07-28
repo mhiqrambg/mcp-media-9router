@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { readFile, writeFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
 import { NineRouterClient } from "./clients/nine-router-client.js";
 import { CONFIG_PATH, DEFAULT_PERSISTED_CONFIG, configToAppConfig, readPersistedConfig, toEnvironment, writePersistedConfig } from "./cli-config.js";
 import { readApiKey, saveApiKey } from "./keychain.js";
+import { registerOpenCodeConfig } from "./opencode-config.js";
 
 const HELP = `mm9 - mcp-media-9router command line utility
 
@@ -16,6 +16,7 @@ Usage:
   mm9 check       Validate configuration and Keychain access
   mm9 check --online  Run one small authenticated search request (may incur provider usage)
   mm9 start       Start the MCP stdio server using saved configuration
+  mm9 opencode install  Register this MCP server in the global OpenCode config
   mm9 uninstall   Run the interactive uninstaller
   mm9 help        Show this help
 `;
@@ -152,30 +153,22 @@ async function registerOpenCode(): Promise<void> {
   const home = process.env.HOME;
   if (!home) throw new Error("HOME is not set; unable to locate OpenCode configuration.");
   const configPath = `${home}/.config/opencode/opencode.json`;
-  let config: Record<string, unknown> = { $schema: "https://opencode.ai/config.json" };
-  try {
-    config = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw new Error(`Unable to parse ${configPath}; fix it manually before registration.`, { cause: error });
-    }
-  }
-  const mcp = typeof config.mcp === "object" && config.mcp !== null ? config.mcp as Record<string, unknown> : {};
   const cliPath = fileURLToPath(import.meta.url);
-  mcp["media-9router"] = { type: "local", command: [process.execPath, cliPath, "start"], enabled: true };
-  config.mcp = mcp;
-  const { mkdir } = await import("node:fs/promises");
-  await mkdir(`${home}/.config/opencode`, { recursive: true, mode: 0o700 });
-  await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  await registerOpenCodeConfig(configPath, [process.execPath, cliPath, "start"]);
 }
 
 async function main(): Promise<void> {
-  const [command, option] = process.argv.slice(2);
+  const [command, option, subcommand] = process.argv.slice(2);
   switch (command) {
     case "setup": await setup(); break;
     case "list": await list(); break;
     case "check": await check(option === "--online"); break;
     case "start": await start(); break;
+    case "opencode":
+      if (option !== "install" || subcommand !== undefined) throw new Error(`Unknown opencode command.\n\n${HELP}`);
+      await registerOpenCode();
+      process.stdout.write("OpenCode configuration updated. Quit and restart OpenCode to load the MCP server.\n");
+      break;
     case "uninstall": await uninstall(); break;
     case "help": case "--help": case "-h": case undefined: process.stdout.write(HELP); break;
     default: throw new Error(`Unknown command '${command}'.\n\n${HELP}`);
