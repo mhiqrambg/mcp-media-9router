@@ -24,7 +24,7 @@ Commands:
   check      Validate local configuration, Keychain access, and provider policy.
   start      Start the stdio MCP server with the saved configuration.
   update     Update a GitHub installer installation and rebuild the project.
-  uninstall  Remove the GitHub installer installation interactively.
+  uninstall  Remove the GitHub installer installation and saved setup.
   help       Show this message and exit.
 
 Setup options:
@@ -132,6 +132,8 @@ async function check(online: boolean): Promise<void> {
     } catch (error) {
       report(false, `9router request failed: ${error instanceof Error ? error.message : "unknown error"}`);
     }
+  } else if (!online) {
+    process.stdout.write("[INFO] 9router connectivity was not tested. Run `mm9 check --online` to test it.\n");
   }
   if (failed) process.exitCode = 1;
 }

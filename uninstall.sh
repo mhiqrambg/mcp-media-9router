@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # mcp-media-9router uninstaller
-# Usage: bash uninstall.sh [--yes] [--purge]
+# Usage: bash uninstall.sh [--yes] [--keep-config]
 
 set -euo pipefail
 
@@ -17,11 +17,11 @@ bold='\033[1m'
 reset='\033[0m'
 
 ASSUME_YES=0
-PURGE=0
+KEEP_CONFIG=0
 for argument in "$@"; do
   case "$argument" in
     --yes) ASSUME_YES=1 ;;
-    --purge) PURGE=1 ;;
+    --keep-config) KEEP_CONFIG=1 ;;
     *) printf '%b\n' "${red}Unknown option: ${argument}${reset}"; exit 1 ;;
   esac
 done
@@ -60,11 +60,9 @@ NODE
 
 printf '\n%b\n' "${bold}mcp-media-9router uninstaller${reset}"
 printf '%b\n\n' "${cyan}--------------------------------${reset}"
-printf 'This removes the installed source and mm9 launcher.\n'
-if [ "$PURGE" -eq 1 ]; then
-  printf '%b\n' "${yellow}--purge also removes saved configuration and the macOS Keychain API key.${reset}"
-else
-  printf 'Saved configuration and the macOS Keychain API key will be preserved.\n'
+printf 'This removes the installed source, mm9 launcher, saved configuration, and macOS Keychain API key.\n'
+if [ "$KEEP_CONFIG" -eq 1 ]; then
+  printf '%b\n' "${yellow}--keep-config preserves saved configuration and the macOS Keychain API key.${reset}"
 fi
 
 confirm "Continue"
@@ -81,7 +79,7 @@ fi
 
 remove_opencode_entry
 
-if [ "$PURGE" -eq 1 ]; then
+if [ "$KEEP_CONFIG" -eq 0 ]; then
   rm -rf "$CONFIG_DIR"
   printf '%b\n' "${green}OK${reset} Removed ${CONFIG_DIR}"
   if command -v security >/dev/null 2>&1; then
@@ -90,7 +88,6 @@ if [ "$PURGE" -eq 1 ]; then
   fi
 else
   printf '%b\n' "${yellow}Preserved${reset} ${CONFIG_DIR} and macOS Keychain API key"
-  printf 'Use `bash uninstall.sh --purge` to remove them.\n'
 fi
 
 printf '\n%b\n' "${green}${bold}Uninstall complete.${reset}"

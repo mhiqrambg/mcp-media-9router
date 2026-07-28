@@ -205,7 +205,7 @@ mm9 list              # Show active provider policy without showing the API key
 mm9 check             # Validate local configuration and Keychain access
 mm9 check --online    # Test an authenticated 9router request
 mm9 update            # Update an install.sh installation
-mm9 uninstall         # Remove the GitHub installer installation
+mm9 uninstall         # Remove the GitHub installer installation and saved setup
 mm9 --help            # Show command help
 mm9 --version         # Show the installed version
 ```
@@ -296,12 +296,12 @@ For an installation created by `install.sh`:
 mm9 uninstall
 ```
 
-The interactive uninstaller removes the `mm9` launcher, `~/.mcp-media-9router`, and the `media-9router` OpenCode entry. It preserves the provider configuration and Keychain API key by default.
+The interactive uninstaller removes the `mm9` launcher, `~/.mcp-media-9router`, the `media-9router` OpenCode entry, the provider configuration, and the macOS Keychain API key. A later `mm9 setup` therefore starts with a clean setup.
 
-To remove all saved configuration and the Keychain item as well:
+To preserve the configuration and Keychain API key for a later reinstall:
 
 ```bash
-bash ~/.mcp-media-9router/uninstall.sh --purge
+bash ~/.mcp-media-9router/uninstall.sh --keep-config
 ```
 
 For a non-interactive uninstall:
