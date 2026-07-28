@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "media-9router": {
+      "command": "npx",
+      "args": ["-y", "mcp-media-9router"],
+      "env": {
+        "NINE_ROUTER_BASE_URL": "https://api.your-9router-domain.com",
+        "NINE_ROUTER_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
