@@ -4,7 +4,8 @@
   "description": "MCP server for structured web intelligence through the 9router proxy.",
   "type": "module",
   "bin": {
-    "mcp-media-9router": "dist/index.js"
+    "mcp-media-9router": "dist/index.js",
+    "mm9": "dist/cli.js"
   },
   "files": [
     "dist",
@@ -14,7 +15,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/index.ts",
+    "mm9": "tsx src/cli.ts",
     "lint": "eslint .",
+    "prepare": "npm run build",
+    "prepack": "npm run build",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",

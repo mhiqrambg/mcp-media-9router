@@ -58,6 +58,33 @@ npm install
 npm run build
 ```
 
+## Instalasi dari GitHub
+
+Sebelum package dipublish ke npm, Anda dapat memasang versi terbaru dari repository GitHub. Pastikan menggunakan tag release agar instalasi reproducible; jangan menggunakan branch `main` untuk penggunaan production.
+
+```bash
+npm install -g github:mhiqrambg/mcp-media-9router#v0.1.0
+mm9 setup
+```
+
+Tag `v0.1.0` harus sudah dibuat di GitHub sebelum command tersebut dapat digunakan. Untuk release pertama, buat commit, push repository, lalu buat dan push tag version tersebut.
+
+Untuk mencoba source dari branch utama saat development:
+
+```bash
+npm install -g github:mhiqrambg/mcp-media-9router
+mm9 setup
+```
+
+Setelah pemasangan global, periksa command yang tersedia:
+
+```bash
+mm9 help
+mm9 check
+```
+
+`mm9 setup` tersedia setelah source dibangun atau package telah dipasang. Ia menyimpan konfigurasi non-rahasia di `~/.config/mcp-media-9router/config.json` dengan permission user-only dan menyimpan API key di macOS Keychain.
+
 Jika source sudah berada di komputer Anda, cukup jalankan dari folder project:
 
 ```bash
@@ -108,6 +135,46 @@ export NINE_ROUTER_SEARCH_MODEL="exa"
 ```
 
 `NINE_ROUTER_BASE_URL` wajib memakai HTTPS. API key yang pernah terpapar pada chat, issue, terminal history, atau repository harus segera di-revoke dan di-rotate.
+
+## Setup Otomatis dengan `mm9`
+
+Di macOS, `mm9 setup` adalah cara yang direkomendasikan untuk konfigurasi. Wizard menanyakan base URL, API key, provider default, provider yang diizinkan, dan urutan fallback. Menekan Enter memakai nilai default.
+
+```bash
+mm9 setup
+```
+
+Default provider:
+
+```text
+Fetch:  exa -> firecrawl -> jina-reader -> tavily
+Search: exa -> gpse -> brave -> openai
+```
+
+Pada akhir setup, pilih `y` jika ingin menambahkan MCP server ke konfigurasi global OpenCode. Entry yang dibuat tidak memasukkan API key ke `opencode.json`; OpenCode memanggil `mm9 start`, yang mengambil key dari macOS Keychain.
+
+Command yang tersedia:
+
+```bash
+mm9 list            # Tampilkan policy aktif tanpa mencetak API key
+mm9 check           # Validasi Node.js, konfigurasi, Keychain, dan policy
+mm9 check --online  # Jalankan satu request search kecil ke 9router; dapat memakai quota/provider usage
+mm9 start           # Jalankan MCP server stdio dengan konfigurasi tersimpan
+mm9 help            # Tampilkan bantuan
+```
+
+Contoh hasil `mm9 list`:
+
+```text
+Status: configured
+Base URL: https://9router.mibp.me
+API key: configured
+
+Fetch:
+  Default: exa
+  Allowed: exa, firecrawl, jina-reader, tavily
+  Fallback: exa -> firecrawl -> jina-reader -> tavily
+```
 
 ## Menjalankan Server Lokal
 
@@ -239,6 +306,12 @@ Jika dipasang global melalui npm:
 npm uninstall -g mcp-media-9router
 ```
 
+Jika dipasang dari GitHub:
+
+```bash
+npm uninstall -g mcp-media-9router
+```
+
 Jika digunakan melalui `npx`, tidak ada package global yang perlu dihapus. Untuk menghapus cache npm secara opsional:
 
 ```bash
@@ -252,6 +325,8 @@ rm -rf /path/to/mcp-media-9router
 ```
 
 Sebelum menghapus source, hapus juga entry `media-9router-local` dari konfigurasi OpenCode, Claude Desktop, atau MCP client lain agar client tidak mencoba menjalankan path yang sudah tidak ada.
+
+Untuk menghapus konfigurasi CLI lokal, hapus file konfigurasi dan item Keychain bernama `mcp-media-9router` melalui aplikasi Keychain Access. Ini sengaja tidak dilakukan otomatis oleh `npm uninstall` agar API key tidak terhapus tanpa persetujuan pengguna.
 
 ## Tools
 
