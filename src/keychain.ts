@@ -26,6 +26,9 @@ export async function readApiKey(): Promise<string | undefined> {
     return stdout.trim() || undefined;
   } catch (error) {
     if ((error as { code?: number }).code === 44) return undefined;
-    throw new Error(`Unable to read the macOS Keychain: ${error instanceof Error ? error.message : "unknown error"}`);
+    throw new Error(
+      `Unable to read the macOS Keychain: ${error instanceof Error ? error.message : "unknown error"}`,
+      { cause: error },
+    );
   }
 }

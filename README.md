@@ -60,36 +60,46 @@ npm run build
 
 ## Instalasi dari GitHub
 
-Sebelum package dipublish ke npm, Anda dapat memasang versi terbaru dari repository GitHub. Pastikan menggunakan tag release agar instalasi reproducible; jangan menggunakan branch `main` untuk penggunaan production.
+Installer satu-baris memasang source ke `~/.mcp-media-9router`, memasang dependency, membangun project, dan membuat command `mm9` di `~/.local/bin`. Installer membutuhkan Git, Node.js 22+, dan npm.
 
 ```bash
-npm install -g github:mhiqrambg/mcp-media-9router#v0.1.0
-mm9 setup
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/mhiqrambg/mcp-media-9router/main/install.sh)"
 ```
 
-Tag `v0.1.0` harus sudah dibuat di GitHub sebelum command tersebut dapat digunakan. Untuk release pertama, buat commit, push repository, lalu buat dan push tag version tersebut.
-
-Untuk mencoba source dari branch utama saat development:
+Setelah selesai, buka terminal baru. Jika installer meminta reload shell, jalankan command yang ditampilkan, misalnya:
 
 ```bash
-npm install -g github:mhiqrambg/mcp-media-9router
-mm9 setup
+source ~/.zshrc
 ```
 
-Setelah pemasangan global, periksa command yang tersedia:
+Kemudian gunakan command langsung, tanpa `node dist/cli.js`:
 
 ```bash
-mm9 help
+mm9 setup
 mm9 check
+mm9 list
 ```
 
-`mm9 setup` tersedia setelah source dibangun atau package telah dipasang. Ia menyimpan konfigurasi non-rahasia di `~/.config/mcp-media-9router/config.json` dengan permission user-only dan menyimpan API key di macOS Keychain.
+Installer aman dijalankan ulang. Ia memperbarui source hanya saat working tree instalasi bersih; local change tidak akan ditimpa. Saat repository GitHub belum tersedia, gunakan [Instalasi Lokal Sebelum Publish](#instalasi-lokal-sebelum-publish).
 
 Jika source sudah berada di komputer Anda, cukup jalankan dari folder project:
 
 ```bash
 npm install
 npm run build
+```
+
+Untuk memakai command `mm9` dari source lokal sebelum installer GitHub tersedia, jalankan:
+
+```bash
+npm link
+mm9 help
+```
+
+Hapus link lokal saat tidak diperlukan:
+
+```bash
+npm unlink -g mcp-media-9router
 ```
 
 ## Konfigurasi Lokal
@@ -299,6 +309,26 @@ Contoh Claude Desktop setelah publish:
 ```
 
 ## Uninstall
+
+Untuk menjalankan uninstaller:
+
+```bash
+mm9 uninstall
+```
+
+Uninstaller meminta konfirmasi, menghapus launcher `mm9`, source install, dan entry `media-9router` dari konfigurasi OpenCode. Konfigurasi provider serta API key di macOS Keychain dipertahankan secara default.
+
+Untuk menghapus juga konfigurasi dan API key:
+
+```bash
+bash ~/.mcp-media-9router/uninstall.sh --purge
+```
+
+Untuk non-interaktif:
+
+```bash
+bash ~/.mcp-media-9router/uninstall.sh --yes
+```
 
 Jika dipasang global melalui npm:
 

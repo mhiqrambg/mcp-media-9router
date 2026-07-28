@@ -51,7 +51,10 @@ export async function readPersistedConfig(): Promise<PersistedConfig | undefined
     return persistedConfigSchema.parse(JSON.parse(raw));
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return undefined;
-    throw new Error(`Unable to read ${CONFIG_PATH}: ${error instanceof Error ? error.message : "unknown error"}`);
+    throw new Error(
+      `Unable to read ${CONFIG_PATH}: ${error instanceof Error ? error.message : "unknown error"}`,
+      { cause: error },
+    );
   }
 }
 

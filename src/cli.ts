@@ -16,6 +16,7 @@ Usage:
   mm9 check       Validate configuration and Keychain access
   mm9 check --online  Run one small authenticated search request (may incur provider usage)
   mm9 start       Start the MCP stdio server using saved configuration
+  mm9 uninstall   Run the interactive uninstaller
   mm9 help        Show this help
 `;
 
@@ -135,6 +136,18 @@ async function start(): Promise<void> {
   });
 }
 
+async function uninstall(): Promise<void> {
+  const scriptPath = fileURLToPath(new URL("../uninstall.sh", import.meta.url));
+  const child = spawn("bash", [scriptPath], { stdio: "inherit" });
+  await new Promise<void>((resolve, reject) => {
+    child.once("error", reject);
+    child.once("exit", (code) => {
+      process.exitCode = code ?? 1;
+      resolve();
+    });
+  });
+}
+
 async function registerOpenCode(): Promise<void> {
   const home = process.env.HOME;
   if (!home) throw new Error("HOME is not set; unable to locate OpenCode configuration.");
@@ -144,7 +157,7 @@ async function registerOpenCode(): Promise<void> {
     config = JSON.parse(await readFile(configPath, "utf8")) as Record<string, unknown>;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") {
-      throw new Error(`Unable to parse ${configPath}; fix it manually before registration.`);
+      throw new Error(`Unable to parse ${configPath}; fix it manually before registration.`, { cause: error });
     }
   }
   const mcp = typeof config.mcp === "object" && config.mcp !== null ? config.mcp as Record<string, unknown> : {};
@@ -163,6 +176,7 @@ async function main(): Promise<void> {
     case "list": await list(); break;
     case "check": await check(option === "--online"); break;
     case "start": await start(); break;
+    case "uninstall": await uninstall(); break;
     case "help": case "--help": case "-h": case undefined: process.stdout.write(HELP); break;
     default: throw new Error(`Unknown command '${command}'.\n\n${HELP}`);
   }
