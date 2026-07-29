@@ -10,6 +10,10 @@ export function isGitHubInstallerLayout(cliPath: string): boolean {
   return resolve(dirname(dirname(cliPath))) === resolve(installerDirectory());
 }
 
+export function npmCommand(platform = process.platform): string {
+  return platform === "win32" ? "npm.cmd" : "npm";
+}
+
 export async function updateGitHubInstallation(cliPath: string): Promise<void> {
   if (!isGitHubInstallerLayout(cliPath)) {
     throw new Error(
@@ -30,12 +34,17 @@ export async function updateGitHubInstallation(cliPath: string): Promise<void> {
   }
 
   await execFileAsync("git", ["pull", "--ff-only", "origin", "main"], { cwd: installDir });
-  await runCommand(process.platform === "win32" ? "npm.cmd" : "npm", ["ci"], installDir);
-  await runCommand(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], installDir);
+  await runCommand(npmCommand(), ["ci"], installDir);
+  await runCommand(npmCommand(), ["run", "build"], installDir);
 }
 
 function runCommand(command: string, arguments_: string[], cwd: string): Promise<void> {
-  const child = spawn(command, arguments_, { cwd, stdio: "inherit" });
+  const child = spawn(command, arguments_, {
+    cwd,
+    stdio: "inherit",
+    // npm.cmd is a Windows command wrapper and must run through cmd.exe.
+    shell: process.platform === "win32",
+  });
   return new Promise((resolvePromise, reject) => {
     child.once("error", reject);
     child.once("exit", (code) => {
