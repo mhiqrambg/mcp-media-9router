@@ -26,14 +26,24 @@ for argument in "$@"; do
   esac
 done
 
-confirm() {
+choose_removal_scope() {
   if [ "$ASSUME_YES" -eq 1 ]; then
     return
   fi
-  local answer
-  read -r -p "$1 [y/N]: " answer
-  case "$answer" in
-    y|Y|yes|YES) ;;
+  if [ "$KEEP_CONFIG" -eq 1 ]; then
+    read -r -p "Remove the application only and keep saved setup? [y/N]: " answer
+    case "$answer" in y|Y|yes|YES) ;; *) printf 'Uninstall cancelled.\n'; exit 0 ;; esac
+    return
+  fi
+
+  printf '\nChoose what to remove:\n'
+  printf '  1. Application only - keep provider configuration and API key\n'
+  printf '  2. Everything - remove application, configuration, and API key\n'
+  printf '  3. Cancel\n'
+  read -r -p 'Select [3]: ' choice
+  case "$choice" in
+    1) KEEP_CONFIG=1 ;;
+    2) ;;
     *) printf 'Uninstall cancelled.\n'; exit 0 ;;
   esac
 }
@@ -65,7 +75,7 @@ if [ "$KEEP_CONFIG" -eq 1 ]; then
   printf '%b\n' "${yellow}--keep-config preserves saved configuration and the macOS Keychain API key.${reset}"
 fi
 
-confirm "Continue"
+choose_removal_scope
 
 if [ -e "$BIN_PATH" ]; then
   rm -f "$BIN_PATH"
@@ -90,5 +100,9 @@ else
   printf '%b\n' "${yellow}Preserved${reset} ${CONFIG_DIR} and macOS Keychain API key"
 fi
 
-printf '\n%b\n' "${green}${bold}Uninstall complete.${reset}"
+if [ "$KEEP_CONFIG" -eq 1 ]; then
+  printf '\n%b\n' "${green}${bold}Uninstall complete. Saved configuration and API key were kept.${reset}"
+else
+  printf '\n%b\n' "${green}${bold}Uninstall complete. Application, configuration, and API key were removed.${reset}"
+fi
 printf 'Quit and restart OpenCode if it is running.\n'

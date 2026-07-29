@@ -37,3 +37,18 @@ export async function registerOpenCodeConfig(configPath: string, command: string
   await mkdir(dirname(configPath), { recursive: true, mode: 0o700 });
   await writeFile(configPath, `${JSON.stringify(updated, null, 2)}\n`, { mode: 0o600 });
 }
+
+export async function removeOpenCodeServer(configPath: string): Promise<void> {
+  try {
+    const config = parseOpenCodeConfig(await readFile(configPath, "utf8"), configPath);
+    const mcp = typeof config.mcp === "object" && config.mcp !== null && !Array.isArray(config.mcp)
+      ? config.mcp as Record<string, unknown>
+      : undefined;
+    if (!mcp || !("media-9router" in mcp)) return;
+    delete mcp["media-9router"];
+    await writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, { mode: 0o600 });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+    throw error;
+  }
+}

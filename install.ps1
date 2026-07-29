@@ -3,7 +3,7 @@
 $ErrorActionPreference = "Stop"
 
 $InstallDir = Join-Path $env:LOCALAPPDATA "mcp-media-9router"
-$BinDir = Join-Path $InstallDir "bin"
+$BinDir = Join-Path $env:LOCALAPPDATA "bin"
 $RepoUrl = "https://github.com/mhiqrambg/mcp-media-9router.git"
 
 function Require-Command([string]$Name) {
@@ -42,6 +42,8 @@ New-Item -ItemType Directory -Force -Path $BinDir | Out-Null
 $NodePath = (Get-Command node).Source
 $Launcher = "@echo off`r`n`"$NodePath`" `"$InstallDir\dist\cli.js`" %*`r`n"
 Set-Content -Path (Join-Path $BinDir "mm9.cmd") -Value $Launcher -NoNewline
+$LegacyLauncher = Join-Path $InstallDir "bin\mm9.cmd"
+Remove-Item -Force $LegacyLauncher -ErrorAction SilentlyContinue
 $UserPath = [Environment]::GetEnvironmentVariable("Path", "User")
 if ($UserPath -notlike "*$BinDir*") {
   [Environment]::SetEnvironmentVariable("Path", "$UserPath;$BinDir", "User")

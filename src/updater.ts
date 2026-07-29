@@ -1,4 +1,5 @@
 import { execFile, spawn } from "node:child_process";
+import { rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { promisify } from "node:util";
 
@@ -17,6 +18,11 @@ export async function updateGitHubInstallation(cliPath: string): Promise<void> {
     );
   }
   const installDir = installerDirectory();
+  if (process.platform === "win32") {
+    // Early Windows installers placed this generated launcher inside the Git checkout.
+    // Remove it before checking for actual user changes, then install.ps1 recreates it outside.
+    await rm(resolve(installDir, "bin", "mm9.cmd"), { force: true });
+  }
 
   const { stdout: changes } = await execFileAsync("git", ["status", "--porcelain"], { cwd: installDir });
   if (changes.trim()) {

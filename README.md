@@ -66,6 +66,8 @@ Configure 9router and register the MCP server in OpenCode:
 mm9 setup --opencode
 ```
 
+`--opencode` verifies that OpenCode is installed or already has a configuration file before writing anything. If OpenCode is not detected, install and run it once first, then repeat the command. Use `mm9 setup --manual` to print a configuration for another MCP client or to configure OpenCode manually.
+
 Press Enter to accept the defaults. The setup wizard asks for:
 
 - The 9router base URL.
@@ -125,7 +127,7 @@ mm9 check
 mm9 check --online
 ```
 
-On Windows, non-secret configuration is stored under `%APPDATA%\mcp-media-9router`. The API key is encrypted with Windows DPAPI and bound to the current Windows user. Restart OpenCode after setup.
+On Windows, non-secret configuration is stored under `%APPDATA%\mcp-media-9router`. The API key is encrypted with Windows DPAPI and bound to the current Windows user. The `mm9` launcher is installed at `%LOCALAPPDATA%\bin\mm9.cmd`, outside the Git checkout so `mm9 update` can run without generated-file conflicts. OpenCode is registered in `%USERPROFILE%\.config\opencode\opencode.jsonc`. Restart OpenCode after setup.
 
 After `mm9 setup`, a direct start also loads the saved setup when environment variables are absent:
 
@@ -244,6 +246,23 @@ mm9 --version         # Show the installed version
 
 `mm9 start` is normally started by OpenCode. It launches the stdio MCP server using the saved configuration.
 
+### Manual Configuration
+
+To configure another MCP client yourself without saving credentials, editing OpenCode, or running the interactive wizard:
+
+```bash
+mm9 setup --manual
+```
+
+The command prints:
+
+- Required environment variables.
+- Default provider and fallback policy values.
+- A ready-to-copy local MCP entry for the current platform.
+- The OpenCode config location for the current platform.
+
+Replace `YOUR_9ROUTER_API_KEY` with your own key in the target client configuration. Restart the MCP client after adding the entry.
+
 ### In OpenCode
 
 After setup and an OpenCode restart, ask the agent to use the tools directly.
@@ -328,7 +347,13 @@ For an installation created by `install.sh`:
 mm9 uninstall
 ```
 
-The interactive uninstaller removes the `mm9` launcher, `~/.mcp-media-9router`, the `media-9router` OpenCode entry, the provider configuration, and the macOS Keychain API key. A later `mm9 setup` therefore starts with a clean setup.
+The interactive uninstaller presents three choices:
+
+1. Remove the application only and keep provider configuration plus the API key.
+2. Remove everything: the application, OpenCode entry, configuration, and secure API-key storage.
+3. Cancel.
+
+Choose option 2 when you want a future `mm9 setup` to start clean.
 
 To preserve the configuration and Keychain API key for a later reinstall:
 

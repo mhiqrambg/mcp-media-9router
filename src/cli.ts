@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 import { spawn } from "node:child_process";
-import { readFile } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { createInterface } from "node:readline/promises";
 import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
 import { NineRouterClient } from "./clients/nine-router-client.js";
 import { CONFIG_PATH, DEFAULT_PERSISTED_CONFIG, configToAppConfig, readPersistedConfig, toEnvironment, writePersistedConfig } from "./cli-config.js";
 import { credentialStoreName, readApiKey, saveApiKey } from "./credentials.js";
-import { registerOpenCodeConfig } from "./opencode-config.js";
-import { opencodeConfigPath } from "./platform.js";
+import { registerOpenCodeConfig, removeOpenCodeServer } from "./opencode-config.js";
+import { configHome, opencodeConfigPath } from "./platform.js";
 import { updateGitHubInstallation } from "./updater.js";
 
 const HELP = `Usage: mm9 [OPTIONS] COMMAND
@@ -29,7 +29,8 @@ Commands:
   help       Show this message and exit.
 
 Setup options:
-  mm9 setup --opencode  Configure 9router and register the server in OpenCode.
+  mm9 setup --opencode  Configure 9router and register the server in detected OpenCode.
+  mm9 setup --manual    Print environment and MCP configuration without saving data.
 
 Check options:
   mm9 check --online    Run a small authenticated search request; may use quota.
@@ -90,6 +91,33 @@ async function setup(registerWithOpenCode: boolean): Promise<void> {
     process.stdout.write("Use `mm9 setup --opencode` to register this server in OpenCode.\n");
   }
   process.stdout.write("Run `mm9 check` to validate the installation.\n");
+}
+
+function manualSetup(): void {
+  const configPath = opencodeConfigPath();
+  const cliPath = fileURLToPath(import.meta.url);
+  const environment = {
+    NINE_ROUTER_BASE_URL: "https://9router.mibp.me",
+    NINE_ROUTER_API_KEY: "YOUR_9ROUTER_API_KEY",
+    NINE_ROUTER_FETCH_MODEL: "exa",
+    NINE_ROUTER_FETCH_MODELS: "exa,firecrawl,jina-reader,tavily",
+    NINE_ROUTER_FETCH_FALLBACK_MODELS: "exa,firecrawl,jina-reader,tavily",
+    NINE_ROUTER_SEARCH_MODEL: "exa",
+    NINE_ROUTER_SEARCH_MODELS: "exa,gpse,brave,openai",
+    NINE_ROUTER_SEARCH_FALLBACK_MODELS: "exa,gpse,brave,openai",
+    MCP_MEDIA_REQUEST_TIMEOUT_MS: "30000",
+    MCP_MEDIA_MAX_RETRIES: "0",
+    MCP_MEDIA_MAX_OUTPUT_CHARS: "100000",
+  };
+  const mcpEntry = {
+    "media-9router": {
+      type: "local",
+      command: [process.execPath, cliPath, "start"],
+      enabled: true,
+      env: environment,
+    },
+  };
+  process.stdout.write(`Manual setup does not save credentials or modify OpenCode.\n\nEnvironment variables:\n${Object.entries(environment).map(([key, value]) => `${key}=${value}`).join("\n")}\n\nOpenCode configuration\nAdd this entry under the "mcp" object in:\n${configPath}\n\n${JSON.stringify(mcpEntry, null, 2)}\n\nRestart OpenCode after saving the configuration.\n`);
 }
 
 async function list(): Promise<void> {
@@ -183,8 +211,35 @@ async function update(): Promise<void> {
 }
 
 async function registerOpenCode(): Promise<void> {
+  const configPath = opencodeConfigPath();
+  if (!(await hasOpenCodeInstallation(configPath))) {
+    throw new Error(
+      "OpenCode was not detected. Install and run OpenCode once, then run `mm9 setup --opencode` again. " +
+      "Use `mm9 setup --manual` if you want to configure an MCP client yourself.",
+    );
+  }
   const cliPath = fileURLToPath(import.meta.url);
-  await registerOpenCodeConfig(opencodeConfigPath(), [process.execPath, cliPath, "start"]);
+  await registerOpenCodeConfig(configPath, [process.execPath, cliPath, "start"]);
+  if (process.platform === "win32") {
+    const legacyPath = `${configHome()}\\opencode\\opencode.json`;
+    if (legacyPath !== opencodeConfigPath()) await removeOpenCodeServer(legacyPath);
+  }
+}
+
+async function hasOpenCodeInstallation(configPath: string): Promise<boolean> {
+  try {
+    await access(configPath);
+    return true;
+  } catch {
+    // A CLI installation may not have created its config file yet.
+  }
+
+  const command = process.platform === "win32" ? "where.exe" : "which";
+  return new Promise((resolve) => {
+    const child = spawn(command, ["opencode"], { stdio: "ignore" });
+    child.once("error", () => resolve(false));
+    child.once("exit", (code) => resolve(code === 0));
+  });
 }
 
 async function showVersion(): Promise<void> {
@@ -197,8 +252,9 @@ async function main(): Promise<void> {
   const [command, option] = process.argv.slice(2);
   switch (command) {
     case "setup":
-      if (option !== undefined && option !== "--opencode") throw new Error(`Unknown setup option '${option}'.\n\n${HELP}`);
-      await setup(option === "--opencode");
+      if (option !== undefined && option !== "--opencode" && option !== "--manual") throw new Error(`Unknown setup option '${option}'.\n\n${HELP}`);
+      if (option === "--manual") manualSetup();
+      else await setup(option === "--opencode");
       break;
     case "list": await list(); break;
     case "check": await check(option === "--online"); break;
