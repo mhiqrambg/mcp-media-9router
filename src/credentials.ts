@@ -22,7 +22,7 @@ export async function saveApiKey(apiKey: string): Promise<void> {
   if (process.platform === "win32") {
     await mkdir(dirname(WINDOWS_CREDENTIAL_PATH), { recursive: true, mode: 0o700 });
     const encodedPath = Buffer.from(WINDOWS_CREDENTIAL_PATH, "utf8").toString("base64");
-    await runPowerShell(`$path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encodedPath}'));$plain=[Console]::In.ReadToEnd();$bytes=[Text.Encoding]::UTF8.GetBytes($plain);$encrypted=[Security.Cryptography.ProtectedData]::Protect($bytes,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser);[IO.File]::WriteAllBytes($path,$encrypted)`, apiKey);
+    await runPowerShell(createProtectScript(encodedPath), apiKey);
     return;
   }
   throw new Error("Secure credential storage is not implemented on this platform. Set NINE_ROUTER_API_KEY in the environment.");
@@ -48,10 +48,18 @@ export async function readApiKey(): Promise<string | undefined> {
       throw new Error("Unable to read encrypted Windows credential storage.", { cause: error });
     }
     const encodedPath = Buffer.from(WINDOWS_CREDENTIAL_PATH, "utf8").toString("base64");
-    const output = await runPowerShell(`$path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encodedPath}'));$encrypted=[IO.File]::ReadAllBytes($path);$plain=[Security.Cryptography.ProtectedData]::Unprotect($encrypted,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser);[Console]::Out.Write([Text.Encoding]::UTF8.GetString($plain))`);
+    const output = await runPowerShell(createUnprotectScript(encodedPath));
     return output || undefined;
   }
   return undefined;
+}
+
+export function createProtectScript(encodedPath: string): string {
+  return `[void][Reflection.Assembly]::LoadWithPartialName('System.Security');$path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encodedPath}'));$plain=[Console]::In.ReadToEnd();$bytes=[Text.Encoding]::UTF8.GetBytes($plain);$encrypted=[Security.Cryptography.ProtectedData]::Protect($bytes,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser);[IO.File]::WriteAllBytes($path,$encrypted)`;
+}
+
+export function createUnprotectScript(encodedPath: string): string {
+  return `[void][Reflection.Assembly]::LoadWithPartialName('System.Security');$path=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${encodedPath}'));$encrypted=[IO.File]::ReadAllBytes($path);$plain=[Security.Cryptography.ProtectedData]::Unprotect($encrypted,$null,[Security.Cryptography.DataProtectionScope]::CurrentUser);[Console]::Out.Write([Text.Encoding]::UTF8.GetString($plain))`;
 }
 
 export async function deleteApiKey(): Promise<void> {
