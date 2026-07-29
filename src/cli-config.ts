@@ -1,11 +1,12 @@
 import { chmod, mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { z } from "zod";
 import { isAllowedNineRouterBaseUrl, nineRouterBaseUrlMessage } from "./config/base-url.js";
 import type { AppConfig } from "./config/env.js";
+import { mediaConfigDirectory } from "./platform.js";
 
-export const CONFIG_PATH = join(homedir(), ".config", "mcp-media-9router", "config.json");
+export const CONFIG_PATH = join(mediaConfigDirectory(), "config.json");
+export const WINDOWS_CREDENTIAL_PATH = join(mediaConfigDirectory(), "credentials.dat");
 export const KEYCHAIN_SERVICE = "mcp-media-9router";
 export const KEYCHAIN_ACCOUNT = "default";
 
@@ -91,6 +92,27 @@ export function toEnvironment(config: PersistedConfig, apiKey: string): NodeJS.P
     MCP_MEDIA_MAX_RETRIES: String(config.maxRetries),
     MCP_MEDIA_MAX_OUTPUT_CHARS: String(config.maxOutputChars),
   };
+}
+
+export async function runtimeEnvironment(environment: NodeJS.ProcessEnv = process.env): Promise<NodeJS.ProcessEnv> {
+  const hasBaseUrl = Boolean(environment.NINE_ROUTER_BASE_URL);
+  const hasApiKey = Boolean(environment.NINE_ROUTER_API_KEY);
+  if (hasBaseUrl || hasApiKey) {
+    if (!hasBaseUrl || !hasApiKey) {
+      throw new Error("Both NINE_ROUTER_BASE_URL and NINE_ROUTER_API_KEY must be set when using environment configuration.");
+    }
+    return environment;
+  }
+
+  const [config, credentials] = await Promise.all([
+    readPersistedConfig(),
+    import("./credentials.js"),
+  ]);
+  const apiKey = await credentials.readApiKey();
+  if (!config || !apiKey) {
+    throw new Error("mcp-media-9router is not configured. Run `mm9 setup` or set NINE_ROUTER_BASE_URL and NINE_ROUTER_API_KEY.");
+  }
+  return { ...environment, ...toEnvironment(config, apiKey) };
 }
 
 export function configToAppConfig(config: PersistedConfig, apiKey: string): AppConfig {

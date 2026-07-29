@@ -33,7 +33,7 @@ Use this server when an AI agent needs to:
 
 ### Requirements
 
-- macOS with Keychain access.
+- macOS with Keychain access, or Windows x64 with PowerShell 5.1 or later.
 - Node.js 22 or later.
 - Git and npm.
 - An active 9router API key.
@@ -108,6 +108,38 @@ mm9 check --online
 ```
 
 Quit and restart OpenCode after `mm9 setup --opencode`. OpenCode loads MCP configuration only at startup.
+
+### Install on Windows x64
+
+Open PowerShell and run:
+
+```powershell
+irm https://raw.githubusercontent.com/mhiqrambg/mcp-media-9router/main/install.ps1 | iex
+```
+
+Open a new PowerShell window, then configure 9router and OpenCode:
+
+```powershell
+mm9 setup --opencode
+mm9 check
+mm9 check --online
+```
+
+On Windows, non-secret configuration is stored under `%APPDATA%\mcp-media-9router`. The API key is encrypted with Windows DPAPI and bound to the current Windows user. Restart OpenCode after setup.
+
+After `mm9 setup`, a direct start also loads the saved setup when environment variables are absent:
+
+```powershell
+npm start
+```
+
+For temporary or CI configuration, environment variables take priority over saved setup:
+
+```powershell
+$env:NINE_ROUTER_BASE_URL = "https://9router.mibp.me"
+$env:NINE_ROUTER_API_KEY = "YOUR_API_KEY"
+npm start
+```
 
 ### Install From a Local Checkout
 
@@ -308,6 +340,12 @@ For a non-interactive uninstall:
 
 ```bash
 bash ~/.mcp-media-9router/uninstall.sh --yes
+```
+
+On Windows:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "$env:LOCALAPPDATA\mcp-media-9router\uninstall.ps1" -Yes
 ```
 
 ## Security

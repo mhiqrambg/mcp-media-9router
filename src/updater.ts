@@ -1,31 +1,31 @@
 import { execFile, spawn } from "node:child_process";
-import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const INSTALL_DIR = join(homedir(), ".mcp-media-9router");
+import { installerDirectory } from "./platform.js";
 
 export function isGitHubInstallerLayout(cliPath: string): boolean {
-  return resolve(dirname(dirname(cliPath))) === resolve(INSTALL_DIR);
+  return resolve(dirname(dirname(cliPath))) === resolve(installerDirectory());
 }
 
 export async function updateGitHubInstallation(cliPath: string): Promise<void> {
   if (!isGitHubInstallerLayout(cliPath)) {
     throw new Error(
-      "mm9 update is available only for the GitHub installer layout at ~/.mcp-media-9router. " +
+      "mm9 update is available only for the GitHub installer layout. " +
       "Update this local checkout with git pull, npm install, and npm run build instead.",
     );
   }
+  const installDir = installerDirectory();
 
-  const { stdout: changes } = await execFileAsync("git", ["status", "--porcelain"], { cwd: INSTALL_DIR });
+  const { stdout: changes } = await execFileAsync("git", ["status", "--porcelain"], { cwd: installDir });
   if (changes.trim()) {
     throw new Error("The installed checkout has local changes. Resolve or remove them before running mm9 update.");
   }
 
-  await execFileAsync("git", ["pull", "--ff-only", "origin", "main"], { cwd: INSTALL_DIR });
-  await runCommand("npm", ["ci"], INSTALL_DIR);
-  await runCommand("npm", ["run", "build"], INSTALL_DIR);
+  await execFileAsync("git", ["pull", "--ff-only", "origin", "main"], { cwd: installDir });
+  await runCommand(process.platform === "win32" ? "npm.cmd" : "npm", ["ci"], installDir);
+  await runCommand(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], installDir);
 }
 
 function runCommand(command: string, arguments_: string[], cwd: string): Promise<void> {

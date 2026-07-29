@@ -2,11 +2,12 @@
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { NineRouterClient } from "./clients/nine-router-client.js";
 import { loadConfig } from "./config/env.js";
+import { runtimeEnvironment } from "./cli-config.js";
 import { createLogger } from "./infrastructure/logger.js";
 import { createServer } from "./server.js";
 
 async function main(): Promise<void> {
-  const config = loadConfig();
+  const config = loadConfig(await runtimeEnvironment());
   const logger = createLogger(config);
   const server = createServer(new NineRouterClient(config), config);
   await server.connect(new StdioServerTransport());

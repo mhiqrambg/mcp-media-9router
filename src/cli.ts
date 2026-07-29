@@ -6,8 +6,9 @@ import { stdin as input, stdout as output } from "node:process";
 import { fileURLToPath } from "node:url";
 import { NineRouterClient } from "./clients/nine-router-client.js";
 import { CONFIG_PATH, DEFAULT_PERSISTED_CONFIG, configToAppConfig, readPersistedConfig, toEnvironment, writePersistedConfig } from "./cli-config.js";
-import { readApiKey, saveApiKey } from "./keychain.js";
+import { credentialStoreName, readApiKey, saveApiKey } from "./credentials.js";
 import { registerOpenCodeConfig } from "./opencode-config.js";
+import { opencodeConfigPath } from "./platform.js";
 import { updateGitHubInstallation } from "./updater.js";
 
 const HELP = `Usage: mm9 [OPTIONS] COMMAND
@@ -37,8 +38,8 @@ Check options:
 async function ask(question: string, defaultValue: string, secret = false): Promise<string> {
   const prompt = `${question} [${secret ? "hidden" : defaultValue}]: `;
   if (secret) {
-    // Node readline cannot hide terminal input without a dependency; the key is stored in Keychain, not the config file.
-    process.stderr.write("API key input is visible in this terminal. It will be stored in macOS Keychain, not the configuration file.\n");
+    // Node readline cannot hide terminal input without a dependency; the key is stored outside the config file.
+    process.stderr.write(`API key input is visible in this terminal. It will be stored in ${credentialStoreName()}, not the configuration file.\n`);
   }
   const readline = createInterface({ input, output });
   try {
@@ -80,7 +81,7 @@ async function setup(registerWithOpenCode: boolean): Promise<void> {
   };
   await saveApiKey(apiKey);
   await writePersistedConfig(config);
-  process.stdout.write(`\nConfiguration saved to ${CONFIG_PATH}. API key saved in macOS Keychain.\n`);
+  process.stdout.write(`\nConfiguration saved to ${CONFIG_PATH}. API key saved in ${credentialStoreName()}.\n`);
 
   if (registerWithOpenCode) {
     await registerOpenCode();
@@ -111,7 +112,7 @@ async function check(online: boolean): Promise<void> {
   };
   report(process.versions.node.split(".")[0] >= "22", `Node.js ${process.version}`);
   report(Boolean(config), `Configuration file ${config ? "found" : "missing"}`);
-  report(Boolean(apiKey), `API key ${apiKey ? "configured in macOS Keychain" : "missing from macOS Keychain"}`);
+  report(Boolean(apiKey), `API key ${apiKey ? `configured in ${credentialStoreName()}` : `missing from ${credentialStoreName()}`}`);
   if (config) {
     report(
       config.baseUrl.startsWith("https://") || config.baseUrl.startsWith("http://localhost"),
@@ -157,8 +158,13 @@ async function start(): Promise<void> {
 }
 
 async function uninstall(): Promise<void> {
-  const scriptPath = fileURLToPath(new URL("../uninstall.sh", import.meta.url));
-  const child = spawn("bash", [scriptPath], { stdio: "inherit" });
+  const scriptName = process.platform === "win32" ? "../uninstall.ps1" : "../uninstall.sh";
+  const scriptPath = fileURLToPath(new URL(scriptName, import.meta.url));
+  const command = process.platform === "win32" ? "powershell.exe" : "bash";
+  const arguments_ = process.platform === "win32"
+    ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", scriptPath]
+    : [scriptPath];
+  const child = spawn(command, arguments_, { stdio: "inherit" });
   await new Promise<void>((resolve, reject) => {
     child.once("error", reject);
     child.once("exit", (code) => {
@@ -177,11 +183,8 @@ async function update(): Promise<void> {
 }
 
 async function registerOpenCode(): Promise<void> {
-  const home = process.env.HOME;
-  if (!home) throw new Error("HOME is not set; unable to locate OpenCode configuration.");
-  const configPath = `${home}/.config/opencode/opencode.json`;
   const cliPath = fileURLToPath(import.meta.url);
-  await registerOpenCodeConfig(configPath, [process.execPath, cliPath, "start"]);
+  await registerOpenCodeConfig(opencodeConfigPath(), [process.execPath, cliPath, "start"]);
 }
 
 async function showVersion(): Promise<void> {
